@@ -31,22 +31,35 @@ type Ebook struct {
 type Library interface {
 	Add(book *BookDetails) (*Ebook, error)
 	GetBookById(id int) (book *Ebook, found bool)
+	GetAll() ([]*Ebook, error)
 }
 
 type FileLibrary struct {
 	maxId int
+	index map[int]*Ebook
 	baseDir string
 }
 
-func (lib *FileLibrary) Add(bookDetails *BookDetails) (ebook *Ebook, err error) {
+func (lib *FileLibrary) Add(bookDetails *BookDetails) (*Ebook, error) {
 	lib.maxId += 1
-	ebook = &Ebook{lib.maxId, make(map[string]string), bookDetails}
-	err = lib.createNewBookFiles(ebook)
+	ebook := &Ebook{lib.maxId, make(map[string]string), bookDetails}
+	err := lib.createNewBookFiles(ebook)
+	if err != nil {
+		return nil, err
+	}
+	lib.index[ebook.Id] = ebook
 	return ebook, err
 }
 
 func (lib *FileLibrary) GetBookById(id int) (*Ebook, error) {
-	// does folder exist
+	book, found := lib.index[id]
+	if !found {
+		return nil, BookNotFound
+	}
+	return book, nil
+}
+
+func (lib *FileLibrary) loadBookFromDisk(id int) (*Ebook, error) {
 	details := &BookDetails{}
 	detailsFile := lib.fileForBook(id)
 	detailsJson, err := ioutil.ReadFile(detailsFile)
@@ -61,6 +74,15 @@ func (lib *FileLibrary) GetBookById(id int) (*Ebook, error) {
 
 	book := &Ebook{id, make(map[string]string), details}
 	return book, nil
+}
+
+func (lib *FileLibrary) GetAll() ([]*Ebook, error) {
+	numBooks := len(lib.index)
+	books := make([]*Ebook, 0, numBooks)
+	for _, book := range(lib.index) {
+		books = append(books, book)
+	}
+	return books, nil
 }
 
 func (lib *FileLibrary) fileForBook(id int) string {
@@ -99,7 +121,8 @@ func mkDirs(dirs... string) (err error) {
 
 func NewFileLibrary(baseDir string) (*FileLibrary, error) {
 	err := createDirIfNotExists(baseDir)
-	return &FileLibrary{baseDir: baseDir}, err
+	index := make(map[int]*Ebook)
+	return &FileLibrary{baseDir: baseDir, index:index}, err
 }
 
 func createDirIfNotExists(dir string) (err error) {

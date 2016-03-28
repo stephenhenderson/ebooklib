@@ -39,6 +39,23 @@ func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 	assert.Equal(t, 2016, libraryBook.Year)
 }
 
+func TestAnEmptyLibraryContainsNoBooks(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	books, err := library.GetAll()
+	assert.NoError(t, err)
+	assert.Empty(t, books)
+}
+
+func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	library.Add(aBook("Book1", "mr writer", 2016))
+	library.Add(aBook("Book2", "mrs writer", 2015))
+
+	books, err := library.GetAll()
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(books))
+}
+
 func aBook(name string, author string, year int) *BookDetails {
 	return &BookDetails{
 		Name:    name,
