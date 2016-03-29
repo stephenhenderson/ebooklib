@@ -9,8 +9,7 @@
     <a href="add_book.html">Add a book</a>
     <h2>Books</h2>
     <ul>
-        {{range .}}<li>{{ .Name }} - {{ .Authors }} - {{ .Year }}</li>{{ end }}
+        {{range .}}<li><a href="view_book.html?id={{ .ID }}">{{ .Title }} - {{ .Authors }} - {{ .Year }}</a></li>{{ end }}
     </ul>
-
 </body>
 </html>

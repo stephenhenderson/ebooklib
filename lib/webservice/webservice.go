@@ -56,19 +56,39 @@ func (webservice *EbookWebService) StartService(host string) {
 	http.HandleFunc("/", webservice.listAllHandler)
 	http.HandleFunc("/add_book.html", webservice.addBookFormHandler)
 	http.HandleFunc("/addBook", webservice.addBookHandler)
+	http.HandleFunc("/view_book.html", webservice.viewBookHandler)
 	http.ListenAndServe(host, nil)
 }
 
-func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+func (webservice *EbookWebService) viewBookHandler(w http.ResponseWriter, r *http.Request) {
+	bookID, err := strconv.Atoi(r.URL.Query().Get("id"))
 	if err != nil {
-		fmt.Fprintf(w, "Error parsing form %v", err)
+		http.Error(w, "No book with this id", http.StatusNotFound)
 		return
 	}
 
-	title := r.PostFormValue("title")
-	authors := strings.Split(r.PostFormValue("authors"), ",")
-	yearStr := r.PostFormValue("year")
+	book, err := webservice.library.GetBookByID(bookID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	err = webservice.templates["view_book.html"].Execute(w, book)
+	if err != nil {
+		http.Error(w, "No book with this id", http.StatusNotFound)
+		return
+	}
+}
+
+func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(100000)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	title := r.MultipartForm.Value["title"][0]
+	authors := strings.Split(r.MultipartForm.Value["authors"][0], ",")
+	yearStr := r.MultipartForm.Value["year"][0]
 	year := 0
 	if yearStr != "" {
 		year, err = strconv.Atoi(yearStr)
@@ -77,12 +97,34 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 		}
 	}
 
+	bookFiles := make(map[string][]byte)
+	fileHeaders := r.MultipartForm.File["files"]
+	Logger.Printf("File headers: %v", fileHeaders)
+	for _, fileHeader := range fileHeaders {
+		//for each fileheader, get a handle to the actual file
+
+		file, err := fileHeader.Open()
+		defer file.Close()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		data, err := ioutil.ReadAll(file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		bookFiles[fileHeader.Filename] = data
+	}
+
 	bookDetails := &ebooks.BookDetails{
 		Title: title,
 		Authors: authors,
 		Year: year,
 	}
-	webservice.library.Add(bookDetails)
+
+	webservice.library.Add(bookDetails, bookFiles)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -94,5 +136,8 @@ func (webservice *EbookWebService) addBookFormHandler(w http.ResponseWriter, r *
 func (webservice *EbookWebService) listAllHandler(w http.ResponseWriter, r *http.Request) {
 	books := webservice.library.GetAll()
 	template := webservice.templates["index.html"]
-	template.Execute(w, books)
+	err := template.Execute(w, books)
+	if err != nil {
+		fmt.Fprintf(w, "Unexpected error:%v", err)
+	}
 }

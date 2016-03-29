@@ -15,7 +15,6 @@ var BookNotFound = errors.New("Book not found")
 
 const (
 	IndexFileName = "index.json"
-	DetailsFileName = "details.json"
 )
 
 func NewFileLibrary(baseDir string) (*FileLibrary, error) {
@@ -49,7 +48,7 @@ func NewFileLibrary(baseDir string) (*FileLibrary, error) {
 type FileLibrary struct {
 
 	// Counter tracking the largest book id currently in the library
-	maxId   int
+	maxID   int
 
 	// All books currently in the library indexed by id
 	index   map[int]*Ebook
@@ -58,19 +57,38 @@ type FileLibrary struct {
 	baseDir string
 }
 
-func (lib *FileLibrary) Add(bookDetails *BookDetails) (*Ebook, error) {
-	lib.maxId += 1
-	ebook := &Ebook{lib.maxId, make(map[string]string), bookDetails}
-	err := lib.createNewBookFiles(ebook)
-	if err != nil {
+func (lib *FileLibrary) Add(bookDetails *BookDetails, files map[string][]byte) (*Ebook, error) {
+	var err error
+	lib.maxID += 1
+	ebook := &Ebook{lib.maxID, make(map[string]string), "", bookDetails}
+	if err = lib.createNewBookFiles(ebook); err != nil {
 		return nil, err
 	}
-	lib.index[ebook.Id] = ebook
-	lib.SaveIndexToDisk()
+
+	for fileName, data := range(files) {
+		Logger.Printf("Adding files for book=%v, file=%v", bookDetails, fileName)
+		if err := lib.AddFileToBook(ebook, fileName, data); err != nil {
+			return nil, err
+		}
+	}
+
+	lib.index[ebook.ID] = ebook
+	err = lib.SaveIndexToDisk()
 	return ebook, err
 }
 
-func (lib *FileLibrary) GetBookById(id int) (*Ebook, error) {
+func (lib *FileLibrary) AddFileToBook(book *Ebook, name string, data []byte) error {
+	filePath := lib.pathToBookFile(name, book.ID)
+	if err := ioutil.WriteFile(filePath, data, 0700); err != nil {
+		return err
+	}
+
+	// update map with path of file
+	book.Files[name] = filePath
+	return nil
+}
+
+func (lib *FileLibrary) GetBookByID(id int) (*Ebook, error) {
 	book, found := lib.index[id]
 	if !found {
 		return nil, BookNotFound
@@ -116,18 +134,37 @@ func (lib *FileLibrary) loadIndexFromFile(file string) error {
 	index := make(map[int]*Ebook)
 	maxId := 0
 	for idStr, bookDetails := range bookDetailsJsonMap {
-		id64, err := strconv.ParseInt(idStr, 10, 64)
+		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			return err
 		}
-		id := int(id64)
-		index[id] = &Ebook{id, make(map[string]string), bookDetails}
+
+		book := &Ebook{id, make(map[string]string), "", bookDetails}
+		err = lib.loadFilesForBook(book)
+		if err != nil {
+			return err
+		}
+		
+		index[id] = book
 		if id > maxId {
 			maxId = id
 		}
 	}
 	lib.index = index
-	lib.maxId = maxId
+	lib.maxID = maxId
+	return nil
+}
+
+func (lib *FileLibrary) loadFilesForBook(book *Ebook) error {
+	filesPath := filepath.Join(lib.folderForBook(book.ID), "files")
+	files, err := ioutil.ReadDir(filesPath)
+	if err != nil {
+		return err
+	}
+	for _, file := range(files) {
+		fileName := file.Name()
+		book.Files[fileName] = lib.pathToBookFile(fileName, book.ID)
+	}
 	return nil
 }
 
@@ -145,48 +182,23 @@ func (lib *FileLibrary) bookDetailsJsonMapFromFile(file string) (map[string]*Boo
 	return detailsMap, nil
 }
 
-func (lib *FileLibrary) loadBookFromDisk(id int) (*Ebook, error) {
-	details := &BookDetails{}
-	detailsFile := lib.fileForBook(id)
-	detailsJson, err := ioutil.ReadFile(detailsFile)
-	if err != nil {
-		return nil, BookNotFound
-	}
-
-	err = json.Unmarshal(detailsJson, details)
-	if err != nil {
-		return nil, err
-	}
-
-	book := &Ebook{id, make(map[string]string), details}
-	return book, nil
-}
-
 func (lib *FileLibrary) fileForIndex() string {
 	return filepath.Join(lib.baseDir, IndexFileName)
-}
-
-func (lib *FileLibrary) fileForBook(id int) string {
-	return filepath.Join(lib.folderForBook(id), DetailsFileName)
 }
 
 func (lib *FileLibrary) folderForBook(id int) string {
 	return filepath.Join(lib.baseDir, strconv.Itoa(id))
 }
 
-func (lib *FileLibrary) createNewBookFiles(book *Ebook) (err error) {
-	// Create directory structure
-	bookFolder := lib.folderForBook(book.Id)
-	filesFolder := filepath.Join(bookFolder, "files")
-	mkDirs(bookFolder, filesFolder)
-	if err != nil {
-		return err
-	}
+func (lib *FileLibrary) pathToBookFile(fileName string, bookID int) string {
+	return filepath.Join(lib.folderForBook(bookID), "files", fileName)
+}
 
-	// Write the book details descriptor
-	bookDetailsFile := lib.fileForBook(book.Id)
-	jsonDescriptor := book.ToJson()
-	err = ioutil.WriteFile(bookDetailsFile, jsonDescriptor, 0700)
+func (lib *FileLibrary) createNewBookFiles(book *Ebook) error {
+	// Create directory structure
+	bookFolder := lib.folderForBook(book.ID)
+	filesFolder := filepath.Join(bookFolder, "files")
+	err := mkDirs(bookFolder, filesFolder)
 	return err
 }
 

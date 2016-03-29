@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Title}}</title>
+</head>
+<body>
+    <a href="../">Home</a>
+     <table>
+            <tr>
+                <td><label>Title</label></td>
+                <td>{{ .Title }}</td>
+            </tr>
+            <tr>
+                <td><label>Authors (comma-separated)</label></td>
+                <td>{{ .Authors }}</td>
+            </tr>
+             <tr>
+                <td><label>Year</label></td>
+                <td>{{ .Year }}</td>
+            </tr>
+            <tr>
+                <td><label>Files</label></td>
+                <td>{{ range $name, $path := .Files }}<li><a href="{{ $path }}">{{ $name }}</a></li>{{ end }}</td>
+            </tr>
+        </table>
+</body>
+</html>

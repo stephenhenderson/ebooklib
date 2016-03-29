@@ -17,17 +17,18 @@ func (book *BookDetails) ToJson() []byte {
 }
 
 type Ebook struct {
-	Id    int
+	ID    int
 	Files map[string]string
+	Image string
 	*BookDetails
 }
 
 type Library interface {
 	// Add a new book to the library
-	Add(book *BookDetails) (*Ebook, error)
+	Add(book *BookDetails, files map[string][]byte) (*Ebook, error)
 
 	// Gets a single book with a given id if it exists
-	GetBookById(id int) (*Ebook, error)
+	GetBookByID(id int) (*Ebook, error)
 
 	// Gets all books in the library
 	GetAll() ([]*Ebook)

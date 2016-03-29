@@ -5,7 +5,7 @@
     <title>New Book</title>
 </head>
 <body>
-    <form action="/addBook" method="post">
+    <form action="/addBook" method="post" enctype="multipart/form-data">
         <table>
             <tr>
                 <td><label>Title</label></td>
@@ -17,7 +17,11 @@
             </tr>
              <tr>
                 <td><label>Year</label></td>
-                <td><input type="text" id="year" name="year" /></td>
+                <td><input type="number" min="1900" max="4000" id="year" name="year" /></td>
+            </tr>
+            <tr>
+                <td><label>Files</label></td>
+                <td><input type="file" name="files" id="files" multiple="multiple"></td>
             </tr>
         </table>
         <input type="submit" value="Add Book" />
