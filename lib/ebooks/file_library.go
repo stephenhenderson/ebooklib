@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	. "github.com/stephenhenderson/ebooklib/lib/logging"
 )
 
 var BookNotFound = errors.New("Book not found")
@@ -17,6 +19,7 @@ const (
 )
 
 func NewFileLibrary(baseDir string) (*FileLibrary, error) {
+	Logger.Printf("Opening library in %s\n", baseDir)
 	err := createDirIfNotExists(baseDir)
 	if err != nil {
 		return nil, err
@@ -27,15 +30,17 @@ func NewFileLibrary(baseDir string) (*FileLibrary, error) {
 
 	existingIndexFile := lib.fileForIndex()
 	if _, err := os.Stat(existingIndexFile); os.IsNotExist(err) {
-		// no existing index - return empty library
+		Logger.Println("No existing index found, creating emptry library")
 		return lib, nil
 	}
 
 	// load existing library
+	Logger.Println("Found existing index file, loading...")
 	err = lib.loadIndexFromFile(existingIndexFile)
 	if err != nil {
 		return nil, err
 	}
+	Logger.Printf("Loaded library with %v books\n", len(lib.index))
 	return lib, nil
 }
 
@@ -109,6 +114,7 @@ func (lib *FileLibrary) loadIndexFromFile(file string) error {
 		return err
 	}
 	index := make(map[int]*Ebook)
+	maxId := 0
 	for idStr, bookDetails := range bookDetailsJsonMap {
 		id64, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
@@ -116,8 +122,12 @@ func (lib *FileLibrary) loadIndexFromFile(file string) error {
 		}
 		id := int(id64)
 		index[id] = &Ebook{id, make(map[string]string), bookDetails}
+		if id > maxId {
+			maxId = id
+		}
 	}
 	lib.index = index
+	lib.maxId = maxId
 	return nil
 }
 

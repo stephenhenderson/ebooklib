@@ -6,7 +6,7 @@ import (
 
 // Meta information about a book
 type BookDetails struct {
-	Name    string
+	Title   string
 	Authors []string
 	Year    int
 }

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ebook Library</title>
+</head>
+<body>
+    <h1>Library</h1>
+    <a href="add_book.html">Add a book</a>
+    <h2>Books</h2>
+    <ul>
+        {{range .}}<li>{{ .Name }} - {{ .Authors }} - {{ .Year }}</li>{{ end }}
+    </ul>
+
+</body>
+</html>

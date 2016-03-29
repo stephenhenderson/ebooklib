@@ -34,7 +34,7 @@ func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 
 	libraryBook, err := library.GetBookById(ebook.Id)
 	assert.NoError(t, err, "Expected to find a book but did not")
-	assert.Equal(t, "Book1", libraryBook.Name)
+	assert.Equal(t, "Book1", libraryBook.Title)
 	assert.Equal(t, "mr writer", libraryBook.Authors[0])
 	assert.Equal(t, 2016, libraryBook.Year)
 }
@@ -84,7 +84,7 @@ func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
 
 func aBook(name string, author string, year int) *BookDetails {
 	return &BookDetails{
-		Name:    name,
+		Title:    name,
 		Authors: []string{author},
 		Year:    year,
 	}
