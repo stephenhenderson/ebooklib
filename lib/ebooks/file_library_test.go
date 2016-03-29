@@ -41,8 +41,7 @@ func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 
 func TestAnEmptyLibraryContainsNoBooks(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	books, err := library.GetAll()
-	assert.NoError(t, err)
+	books := library.GetAll()
 	assert.Empty(t, books)
 }
 
@@ -51,9 +50,36 @@ func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
 	library.Add(aBook("Book1", "mr writer", 2016))
 	library.Add(aBook("Book2", "mrs writer", 2015))
 
-	books, err := library.GetAll()
-	assert.NoError(t, err)
+	books := library.GetAll()
 	assert.Equal(t, 2, len(books))
+}
+
+func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_EmptyLib(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	err := library.SaveIndexToDisk()
+	assert.NoError(t, err, "Error saving index to disk")
+
+	indexJson, err := ioutil.ReadFile(library.fileForIndex())
+	assert.NoError(t, err)
+	assert.Equal(t, "{}", string(indexJson))
+}
+
+func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	library.Add(aBook("Book1", ",mr writer", 2016))
+	library.Add(aBook("Book2", "mrs writer", 2015))
+
+	err := library.SaveIndexToDisk()
+	assert.NoError(t, err, "Error saving index to disk")
+
+	indexFileName := library.fileForIndex()
+	_, err = ioutil.ReadFile(indexFileName)
+	assert.NoError(t, err)
+
+	expectedMap := library.indexToBookDetailsJsonMap()
+	actualMap, err := library.bookDetailsJsonMapFromFile(indexFileName)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedMap, actualMap)
 }
 
 func aBook(name string, author string, year int) *BookDetails {
@@ -65,7 +91,7 @@ func aBook(name string, author string, year int) *BookDetails {
 }
 
 func deleteTempFoldersCreatedDuringTesting() {
-	for _, folder := range(tempFolders) {
+	for _, folder := range tempFolders {
 		err := os.RemoveAll(folder)
 		if err != nil {
 			fmt.Printf("Error deleting temp dir %v, err=%v\n", folder, err)
@@ -90,4 +116,13 @@ func newLibraryInTempFolder(t *testing.T) *FileLibrary {
 	}
 
 	return library
+}
+
+func containsFile(targetFile string, files []os.FileInfo) bool {
+	for _, file := range files {
+		if file.Name() == targetFile {
+			return true
+		}
+	}
+	return false
 }
