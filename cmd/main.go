@@ -1,24 +1,60 @@
 package main
 
 import (
+	"errors"
+	"flag"
+	"os"
+
+	"github.com/stephenhenderson/ebooklib/lib/config"
+	"github.com/stephenhenderson/ebooklib/lib/ebooks"
 	. "github.com/stephenhenderson/ebooklib/lib/logging"
 	"github.com/stephenhenderson/ebooklib/lib/webservice"
-	"github.com/stephenhenderson/ebooklib/lib/ebooks"
 )
 
 func main() {
-	baseDir := "/tmp/mylibrary"
-	templateDir := "/Users/shenderson/workspace/go_paths/ebooklib/src/github.com/stephenhenderson/ebooklib/templates"
-	library, err := ebooks.NewFileLibrary(baseDir)
+	appConfig := tryToLoadAppConfig()
+	library := tryToInitializeLibrary(appConfig.LibraryPath)
+	webservice := tryToInitializeWebService(library, appConfig.TemplatePath)
+	webservice.StartService(appConfig.NetworkAddr)
+}
 
+func tryToLoadAppConfig() *config.AppConfig {
+	appConfig, err := parseFlags()
+	if err != nil {
+		Logger.Fatalf("Bad application arguments: %v\n", err)
+		flag.Usage()
+		os.Exit(1)
+	}
+	return appConfig
+}
+
+func parseFlags() (*config.AppConfig, error) {
+	configPath := flag.String(
+		"config",
+		"",
+		"Path to config file containing")
+
+	flag.Parse()
+	if *configPath == "" {
+		return nil, errors.New("Missing config path")
+	}
+
+	return config.LoadConfigFromFile(*configPath)
+}
+
+func tryToInitializeLibrary(libraryPath string) *ebooks.FileLibrary {
+	library, err := ebooks.NewFileLibrary(libraryPath)
 	if err != nil {
 		Logger.Fatalf("Encountered fatal error %v", err)
 	}
+	return library
+}
 
-	webservice, err := webservice.NewEbookWebService(library, templateDir)
+func tryToInitializeWebService(library *ebooks.FileLibrary, templatePath string) *webservice.EbookWebService {
+	webservice, err := webservice.NewEbookWebService(library, templatePath)
 	if err != nil {
 		Logger.Fatalf("Error loading html templates from %s\nerr:\n%v",
-			templateDir, err)
+			templatePath, err)
 	}
-	webservice.StartService("localhost:8080")
+	return webservice
 }

@@ -3,18 +3,16 @@ package ebooks
 import (
 	"fmt"
 	"testing"
-
-	assert "github.com/stretchr/testify/require"
-	"io/ioutil"
-	"os"
 	"encoding/json"
+	"io/ioutil"
+	"reflect"
+
+	"github.com/stephenhenderson/ebooklib/lib/testutils/assert"
+	"github.com/stephenhenderson/ebooklib/lib/testutils"
 )
 
-// List of temp folders created during testing to be cleaned up during teardown
-var tempFolders []string = []string{}
-
 func TestMain(m *testing.M) {
-	defer deleteTempFoldersCreatedDuringTesting()
+	defer testutils.DeleteTempDirsCreatedDuringTesting()
 	m.Run()
 }
 
@@ -25,7 +23,9 @@ func TestNewBooksAreAssignedAUniqueId(t *testing.T) {
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
-	assert.NotEqual(t, id1, id2, "Two books cannot have same id")
+	if id1 == id2 {
+		t.Fatalf("Two books cannot have the same id. id=%v", id1)
+	}
 }
 
 func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
@@ -35,15 +35,20 @@ func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 
 	libraryBook, err := library.GetBookByID(ebook.ID)
 	assert.NoError(t, err, "Expected to find a book but did not")
-	assert.Equal(t, "Book1", libraryBook.Title)
-	assert.Equal(t, "mr writer", libraryBook.Authors[0])
-	assert.Equal(t, 2016, libraryBook.Year)
+
+	libraryDetails := libraryBook.BookDetails
+	expectedDetails := ebook.BookDetails
+	if libraryDetails != expectedDetails {
+		t.Fatalf("Retrieved book %v is not same as added book: %v", libraryDetails, expectedDetails)
+	}
 }
 
 func TestAnEmptyLibraryContainsNoBooks(t *testing.T) {
 	library := newLibraryInTempFolder(t)
 	books := library.GetAll()
-	assert.Empty(t, books)
+	if len(books) != 0 {
+		t.Fatalf("Empty library should have 0 books but has %v", len(books))
+	}
 }
 
 func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
@@ -52,7 +57,9 @@ func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
 	library.Add(aBook("Book2", "mrs writer", 2015), emptyFileMap())
 
 	books := library.GetAll()
-	assert.Equal(t, 2, len(books))
+	if len(books) != 2 {
+		t.Fatalf("Library should contain all books added to it. Expected 2 but found %v", len(books))
+	}
 }
 
 func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_EmptyLib(t *testing.T) {
@@ -62,7 +69,9 @@ func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_EmptyLib(t *testing.T) {
 
 	indexJson, err := ioutil.ReadFile(library.fileForIndex())
 	assert.NoError(t, err)
-	assert.Equal(t, "{}", string(indexJson))
+	if string(indexJson) != "{}" {
+		t.Fatalf("Expected empty index '{}' but found '%v'", string(indexJson))
+	}
 }
 
 func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
@@ -80,7 +89,19 @@ func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
 	expectedMap := library.indexToBookDetailsJsonMap()
 	actualMap, err := library.bookDetailsJsonMapFromFile(indexFileName)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedMap, actualMap)
+
+	if len(actualMap) != len(expectedMap) {
+		t.Fatalf("Index written to disk '%v' does not match expected '%v'", actualMap, expectedMap)
+	}
+	for id, bookDetails := range actualMap {
+		expectedDetails, found := expectedMap[id]
+		if !found {
+			t.Fatalf("Found unexpected book id=%v, book=%v", id, bookDetails)
+		}
+		if !reflect.DeepEqual(bookDetails, expectedDetails) {
+			t.Fatalf("Saved book does not match original, saved='%v', actual='%v'", bookDetails, expectedDetails)
+		}
+	}
 }
 
 func TestSavingABookWithAFile(t *testing.T) {
@@ -91,7 +112,11 @@ func TestSavingABookWithAFile(t *testing.T) {
 
 	fmt.Printf("BookFiles=%v", book.Files["file1.json"])
 	assert.NoError(t, err)
-	assert.NotEmpty(t, book.Files["file1.json"])
+
+	_, found := book.Files["file1.json"]
+	if !found {
+		t.Fatalf("File associated with book not saved")
+	}
 }
 
 func aJsonFile() []byte {
@@ -108,45 +133,19 @@ func emptyFileMap() map[string][]byte {
 
 func aBook(name string, author string, year int) *BookDetails {
 	return &BookDetails{
-		Title:    name,
+		Title:   name,
 		Authors: []string{author},
 		Year:    year,
 	}
 }
 
-func deleteTempFoldersCreatedDuringTesting() {
-	for _, folder := range tempFolders {
-		err := os.RemoveAll(folder)
-		if err != nil {
-			fmt.Printf("Error deleting temp dir %v, err=%v\n", folder, err)
-		}
-	}
-}
-
-func createTempFolder(t *testing.T) string {
-	folder, err := ioutil.TempDir("", "ebook_tests")
-	if err != nil {
-		t.Fatalf("Error creating temp dir", err)
-	}
-	tempFolders = append(tempFolders, folder)
-	return folder
-}
 
 func newLibraryInTempFolder(t *testing.T) *FileLibrary {
-	folder := createTempFolder(t)
+	folder := testutils.CreateTempDir(t)
 	library, err := NewFileLibrary(folder)
 	if err != nil {
 		t.Fatalf("Error creating library", err)
 	}
 
 	return library
-}
-
-func containsFile(targetFile string, files []os.FileInfo) bool {
-	for _, file := range files {
-		if file.Name() == targetFile {
-			return true
-		}
-	}
-	return false
 }

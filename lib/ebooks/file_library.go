@@ -25,7 +25,7 @@ func NewFileLibrary(baseDir string) (*FileLibrary, error) {
 	}
 
 	index := make(map[int]*Ebook)
-	lib := &FileLibrary{baseDir: baseDir, index: index}
+	lib := &FileLibrary{BaseDir: baseDir, index: index}
 
 	existingIndexFile := lib.fileForIndex()
 	if _, err := os.Stat(existingIndexFile); os.IsNotExist(err) {
@@ -54,7 +54,7 @@ type FileLibrary struct {
 	index   map[int]*Ebook
 
 	// Base directory where the library contents are stored
-	baseDir string
+	BaseDir string
 }
 
 func (lib *FileLibrary) Add(bookDetails *BookDetails, files map[string][]byte) (*Ebook, error) {
@@ -78,13 +78,13 @@ func (lib *FileLibrary) Add(bookDetails *BookDetails, files map[string][]byte) (
 }
 
 func (lib *FileLibrary) AddFileToBook(book *Ebook, name string, data []byte) error {
-	filePath := lib.pathToBookFile(name, book.ID)
+	filePath := lib.fullPathToBookFile(name, book.ID)
 	if err := ioutil.WriteFile(filePath, data, 0700); err != nil {
 		return err
 	}
 
 	// update map with path of file
-	book.Files[name] = filePath
+	book.Files[name] = lib.relativePathToBookFile(name, book.ID)
 	return nil
 }
 
@@ -144,7 +144,7 @@ func (lib *FileLibrary) loadIndexFromFile(file string) error {
 		if err != nil {
 			return err
 		}
-		
+
 		index[id] = book
 		if id > maxId {
 			maxId = id
@@ -163,7 +163,7 @@ func (lib *FileLibrary) loadFilesForBook(book *Ebook) error {
 	}
 	for _, file := range(files) {
 		fileName := file.Name()
-		book.Files[fileName] = lib.pathToBookFile(fileName, book.ID)
+		book.Files[fileName] = lib.relativePathToBookFile(fileName, book.ID)
 	}
 	return nil
 }
@@ -183,14 +183,18 @@ func (lib *FileLibrary) bookDetailsJsonMapFromFile(file string) (map[string]*Boo
 }
 
 func (lib *FileLibrary) fileForIndex() string {
-	return filepath.Join(lib.baseDir, IndexFileName)
+	return filepath.Join(lib.BaseDir, IndexFileName)
 }
 
 func (lib *FileLibrary) folderForBook(id int) string {
-	return filepath.Join(lib.baseDir, strconv.Itoa(id))
+	return filepath.Join(lib.BaseDir, strconv.Itoa(id))
 }
 
-func (lib *FileLibrary) pathToBookFile(fileName string, bookID int) string {
+func (lib *FileLibrary) relativePathToBookFile(fileName string, bookID int) string {
+	return filepath.Join(strconv.Itoa(bookID), "files", fileName)
+}
+
+func (lib *FileLibrary) fullPathToBookFile(fileName string, bookID int) string {
 	return filepath.Join(lib.folderForBook(bookID), "files", fileName)
 }
 

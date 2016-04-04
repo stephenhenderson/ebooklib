@@ -16,7 +16,7 @@ import (
 // NewEbookWebService initialises a new webservice with the given library
 // and html template directory, returns error if there is any error loading
 // the templates
-func NewEbookWebService(library ebooks.Library, templateDir string) (*EbookWebService, error) {
+func NewEbookWebService(library *ebooks.FileLibrary, templateDir string) (*EbookWebService, error) {
 	templates, err := loadTemplates(templateDir)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func loadTemplates(templateDir string) (map[string]*template.Template, error) {
 }
 
 type EbookWebService struct {
-	library ebooks.Library
+	library *ebooks.FileLibrary
 	templates map[string]*template.Template
 }
 
@@ -55,8 +55,11 @@ func (webservice *EbookWebService) StartService(host string) {
 	Logger.Printf("Starting webservice on %s", host)
 	http.HandleFunc("/", webservice.listAllHandler)
 	http.HandleFunc("/add_book.html", webservice.addBookFormHandler)
-	http.HandleFunc("/addBook", webservice.addBookHandler)
 	http.HandleFunc("/view_book.html", webservice.viewBookHandler)
+
+	http.Handle("/download_book/", http.StripPrefix("/download_book/", http.FileServer(http.Dir(webservice.library.BaseDir))))
+	http.HandleFunc("/addBook", webservice.addBookHandler)
+
 	http.ListenAndServe(host, nil)
 }
 

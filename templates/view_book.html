@@ -21,7 +21,7 @@
             </tr>
             <tr>
                 <td><label>Files</label></td>
-                <td>{{ range $name, $path := .Files }}<li><a href="{{ $path }}">{{ $name }}</a></li>{{ end }}</td>
+                <td>{{ range $name, $path := .Files }}<li><a href="/download_book/{{ $path }}">{{ $name }}</a></li>{{ end }}</td>
             </tr>
         </table>
 </body>
