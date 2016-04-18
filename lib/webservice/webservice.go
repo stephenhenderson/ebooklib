@@ -13,6 +13,12 @@ import (
 	"strconv"
 )
 
+const (
+	addBookTemplate = "add_book.html"
+	indexTemplate = "index.html"
+	viewBookTemplate = "view_book.html"
+)
+
 // NewEbookWebService initialises a new webservice with the given library
 // and html template directory, returns error if there is any error loading
 // the templates
@@ -42,7 +48,20 @@ func loadTemplates(templateDir string) (map[string]*template.Template, error) {
 			templateMap[fileName] = template
 		}
 	}
-	return templateMap, nil
+
+	err = validateTemplates(templateMap)
+	return templateMap, err
+}
+
+func validateTemplates(templateMap map[string]*template.Template) error {
+	expectedTemplates := []string{addBookTemplate, viewBookTemplate, indexTemplate}
+	for _, template := range(expectedTemplates) {
+		_, found := templateMap[template]
+		if !found {
+			return fmt.Errorf("missing required template %s", template)
+		}
+	}
+	return nil
 }
 
 type EbookWebService struct {
@@ -54,8 +73,8 @@ type EbookWebService struct {
 func (webservice *EbookWebService) StartService(host string) {
 	Logger.Printf("Starting webservice on %s", host)
 	http.HandleFunc("/", webservice.listAllHandler)
-	http.HandleFunc("/add_book.html", webservice.addBookFormHandler)
-	http.HandleFunc("/view_book.html", webservice.viewBookHandler)
+	http.HandleFunc("/" + addBookTemplate, webservice.addBookFormHandler)
+	http.HandleFunc("/" + viewBookTemplate, webservice.viewBookHandler)
 
 	http.Handle("/download_book/", http.StripPrefix("/download_book/", http.FileServer(http.Dir(webservice.library.BaseDir))))
 	http.HandleFunc("/addBook", webservice.addBookHandler)
@@ -132,13 +151,13 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 }
 
 func (webservice *EbookWebService) addBookFormHandler(w http.ResponseWriter, r *http.Request) {
-	template := webservice.templates["add_book.html"]
+	template := webservice.templates[addBookTemplate]
 	template.Execute(w, nil)
 }
 
 func (webservice *EbookWebService) listAllHandler(w http.ResponseWriter, r *http.Request) {
 	books := webservice.library.GetAll()
-	template := webservice.templates["index.html"]
+	template := webservice.templates[indexTemplate]
 	err := template.Execute(w, books)
 	if err != nil {
 		fmt.Fprintf(w, "Unexpected error:%v", err)

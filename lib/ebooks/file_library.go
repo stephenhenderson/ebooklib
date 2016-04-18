@@ -17,6 +17,9 @@ const (
 	IndexFileName = "index.json"
 )
 
+// NewFileLibrary opens a file library in the given directory. If existing
+// library files are found they are loaded otherwise a new empty library
+// is created. If the directory does not exist we attempt to create it.
 func NewFileLibrary(baseDir string) (*FileLibrary, error) {
 	Logger.Printf("Opening library in %s\n", baseDir)
 	err := createDirIfNotExists(baseDir)

@@ -1,0 +1,5 @@
+{
+  "LibraryPath"   : "/tmp/mylibrary",
+  "TemplatePath"  : "/Users/shenderson/workspace/go_paths/ebooklib/src/github.com/stephenhenderson/ebooklib/templates",
+  "NetworkAddr"   : ":8080"
+}

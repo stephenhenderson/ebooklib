@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"fmt"
 
 	"github.com/stephenhenderson/ebooklib/lib/config"
 	"github.com/stephenhenderson/ebooklib/lib/ebooks"
@@ -21,7 +22,7 @@ func main() {
 func tryToLoadAppConfig() *config.AppConfig {
 	appConfig, err := parseFlags()
 	if err != nil {
-		Logger.Fatalf("Bad application arguments: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error loading config file: %v\n", err)
 		flag.Usage()
 		os.Exit(1)
 	}

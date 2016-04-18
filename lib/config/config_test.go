@@ -7,6 +7,11 @@ import (
 	"path/filepath"
 )
 
+func TestMain(m *testing.M) {
+	defer testutils.DeleteTempDirsCreatedDuringTesting()
+	m.Run()
+}
+
 func TestReturnsErrorIfConfigFileNotFound(t *testing.T) {
 	_, err := LoadConfigFromFile("aFileWhichDoesNotExist.json")
 	if err == nil {
