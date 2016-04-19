@@ -21,7 +21,12 @@
             </tr>
             <tr>
                 <td><label>Files</label></td>
-                <td>{{ range $name, $path := .Files }}<li><a href="/download_book/{{ $path }}">{{ $name }}</a></li>{{ end }}</td>
+                <td><ul>
+                    {{ range $name, $path := .Files }}
+                        <li><a href="/download_book/{{ $path }}">{{ $name }}</a>[<a href="/delete_file?bookid={{ $.ID }}&name={{ $name }}">x</a>]</li>
+                    {{ end }}
+                    </ul>
+                </td>
             </tr>
         </table>
 </body>

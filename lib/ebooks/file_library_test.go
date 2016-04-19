@@ -1,7 +1,6 @@
 package ebooks
 
 import (
-	"fmt"
 	"testing"
 	"encoding/json"
 	"io/ioutil"
@@ -110,13 +109,38 @@ func TestSavingABookWithAFile(t *testing.T) {
 	bookFiles["file1.json"] = aJsonFile()
 	book, err := library.Add(aBook("book1", "mr writer", 2016), bookFiles)
 
-	fmt.Printf("BookFiles=%v", book.Files["file1.json"])
 	assert.NoError(t, err)
 
 	_, found := book.Files["file1.json"]
 	if !found {
 		t.Fatalf("File associated with book not saved")
 	}
+}
+
+func TestAFileCanBeDeletedFromABook(t *testing.T) {
+	fileName := "file1.json"
+	library := newLibraryInTempFolder(t)
+	bookFiles := make(map[string][]byte)
+	bookData := aJsonFile()
+	bookFiles[fileName] = bookData
+	book, _ := library.Add(aBook("book1", "mr writer", 2016), bookFiles)
+
+	err := library.DeleteFileFromBook(fileName, book.ID)
+	assert.NoError(t, err)
+	fileLocation := library.fullPathToBookFile(fileName, book.ID)
+
+	_, err = ioutil.ReadFile(fileLocation)
+	if err == nil {
+		t.Fatalf("file %s was not deleted from the file system", fileName)
+	}
+
+	book, err = library.GetBookByID(book.ID)
+	assert.NoError(t, err)
+	_, found := book.Files[fileName]
+	if found {
+		t.Fatalf("file %s still referenced in library after deletion", fileName)
+	}
+
 }
 
 func aJsonFile() []byte {

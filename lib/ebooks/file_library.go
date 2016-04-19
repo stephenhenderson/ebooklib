@@ -9,6 +9,8 @@ import (
 	"strconv"
 
 	. "github.com/stephenhenderson/ebooklib/lib/logging"
+	"fmt"
+	"github.com/FiloSottile/gvt/fileutils"
 )
 
 var BookNotFound = errors.New("Book not found")
@@ -89,6 +91,22 @@ func (lib *FileLibrary) AddFileToBook(book *Ebook, name string, data []byte) err
 	// update map with path of file
 	book.Files[name] = lib.relativePathToBookFile(name, book.ID)
 	return nil
+}
+
+func (lib *FileLibrary) DeleteFileFromBook(fileName string, bookID int) error {
+	book, found := lib.index[bookID]
+	if !found {
+		return fmt.Errorf("cannot delete file %s from book with id=%d, no book found with that id", fileName, bookID)
+	}
+
+	_, exists := book.Files[fileName]
+	if !exists {
+		return fmt.Errorf("no file with name %s found for book with id=%d", fileName, bookID)
+	}
+
+	err := fileutils.RemoveAll(lib.fullPathToBookFile(fileName, bookID))
+	delete(book.Files, fileName)
+	return err
 }
 
 func (lib *FileLibrary) GetBookByID(id int) (*Ebook, error) {
