@@ -23,7 +23,9 @@
                 <td><label>Files</label></td>
                 <td><ul>
                     {{ range $name, $path := .Files }}
-                        <li><a href="/download_book/{{ $path }}">{{ $name }}</a>[<a href="/delete_file?bookid={{ $.ID }}&name={{ $name }}">x</a>]</li>
+                        <li><a href="/download_book/{{ $path }}">{{ $name }}</a>
+                            [<a href="/delete_file?bookid={{ $.ID }}&filename={{ $name }}"
+                                onclick="return confirm('Delete file {{ $name }}?');">x</a>]</li>
                     {{ end }}
                     </ul>
                 </td>
