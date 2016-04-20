@@ -127,20 +127,39 @@ func TestAFileCanBeDeletedFromABook(t *testing.T) {
 
 	err := library.DeleteFileFromBook(fileName, book.ID)
 	assert.NoError(t, err)
-	fileLocation := library.fullPathToBookFile(fileName, book.ID)
 
+	// check the file is no longer on disk
+	fileLocation := library.fullPathToBookFile(fileName, book.ID)
 	_, err = ioutil.ReadFile(fileLocation)
 	if err == nil {
 		t.Fatalf("file %s was not deleted from the file system", fileName)
 	}
 
+	// check the file is no longer referenced by the library
 	book, err = library.GetBookByID(book.ID)
 	assert.NoError(t, err)
 	_, found := book.Files[fileName]
 	if found {
 		t.Fatalf("file %s still referenced in library after deletion", fileName)
 	}
+}
 
+func TestReturnsAnErrorTryingToDeleteAFileWhichDoesNotExist(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	book, _ := library.Add(aBook("book1", "mr writer", 2016), make(map[string][]byte))
+
+	err := library.DeleteFileFromBook("a_file_which_is_not_there", book.ID)
+	if err == nil {
+		t.Fatal("No error was returned trying to delete a nonexistent file")
+	}
+}
+
+func TestReturnsAnErrorTryingToDeleteAFileFromABookWhichDoesNotExist(t *testing.T) {
+	library := newLibraryInTempFolder(t)
+	err := library.DeleteFileFromBook("a_file_which_is_not_there", 123)
+	if err == nil {
+		t.Fatal("No error was returned trying to delete a nonexistent file")
+	}
 }
 
 func aJsonFile() []byte {
@@ -162,7 +181,6 @@ func aBook(name string, author string, year int) *BookDetails {
 		Year:    year,
 	}
 }
-
 
 func newLibraryInTempFolder(t *testing.T) *FileLibrary {
 	folder := testutils.CreateTempDir(t)

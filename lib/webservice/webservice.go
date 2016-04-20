@@ -3,6 +3,7 @@ package webservice
 import (
 	"html/template"
 	"net/http"
+	"mime/multipart"
 	"io/ioutil"
 	"path/filepath"
 
@@ -49,11 +50,11 @@ func loadTemplates(templateDir string) (map[string]*template.Template, error) {
 		}
 	}
 
-	err = validateTemplates(templateMap)
+	err = checkAllRequiredTemplatesArePresent(templateMap)
 	return templateMap, err
 }
 
-func validateTemplates(templateMap map[string]*template.Template) error {
+func checkAllRequiredTemplatesArePresent(templateMap map[string]*template.Template) error {
 	expectedTemplates := []string{addBookTemplate, viewBookTemplate, indexTemplate}
 	for _, template := range(expectedTemplates) {
 		_, found := templateMap[template]
@@ -64,6 +65,7 @@ func validateTemplates(templateMap map[string]*template.Template) error {
 	return nil
 }
 
+// EbookWebService a webservice/UI on top of an ebook library
 type EbookWebService struct {
 	library *ebooks.FileLibrary
 	templates map[string]*template.Template
@@ -77,9 +79,31 @@ func (webservice *EbookWebService) StartService(host string) {
 	http.HandleFunc("/" + viewBookTemplate, webservice.viewBookHandler)
 
 	http.Handle("/download_book/", http.StripPrefix("/download_book/", http.FileServer(http.Dir(webservice.library.BaseDir))))
+	http.HandleFunc("/delete_file", webservice.deleteFileHandler)
 	http.HandleFunc("/addBook", webservice.addBookHandler)
 
 	http.ListenAndServe(host, nil)
+}
+
+func (webservice *EbookWebService) deleteFileHandler(w http.ResponseWriter, r *http.Request) {
+	bookID, err := strconv.Atoi(r.URL.Query().Get("bookid"))
+	if err != nil {
+		http.Error(w, "No book with this id", http.StatusBadRequest)
+	}
+
+	fileName := r.URL.Query().Get("filename")
+	if len(fileName) == 0 {
+		http.Error(w, "Missing filename to delete", http.StatusBadRequest)
+	}
+
+	err = webservice.library.DeleteFileFromBook(fileName, bookID)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error deleting file %v", err)
+		http.Error(w, errMsg, http.StatusInternalServerError)
+	}
+
+	viewBookUrl := fmt.Sprintf("/%s?id=%d", viewBookTemplate, bookID)
+	http.Redirect(w, r, viewBookUrl, http.StatusFound)
 }
 
 func (webservice *EbookWebService) viewBookHandler(w http.ResponseWriter, r *http.Request) {
@@ -119,25 +143,12 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 		}
 	}
 
-	bookFiles := make(map[string][]byte)
 	fileHeaders := r.MultipartForm.File["files"]
 	Logger.Printf("File headers: %v", fileHeaders)
-	for _, fileHeader := range fileHeaders {
-		//for each fileheader, get a handle to the actual file
-
-		file, err := fileHeader.Open()
-		defer file.Close()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		data, err := ioutil.ReadAll(file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		bookFiles[fileHeader.Filename] = data
+	bookFiles, err := readBookFilesFromFileHeaders(fileHeaders)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	bookDetails := &ebooks.BookDetails{
@@ -146,8 +157,32 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 		Year: year,
 	}
 
-	webservice.library.Add(bookDetails, bookFiles)
-	http.Redirect(w, r, "/", http.StatusFound)
+	book, err := webservice.library.Add(bookDetails, bookFiles)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	viewBookUrl := fmt.Sprintf("/%s?id=%d", viewBookTemplate, book.ID)
+	http.Redirect(w, r, viewBookUrl, http.StatusFound)
+}
+
+func readBookFilesFromFileHeaders(fileHeaders []*multipart.FileHeader) (map[string][]byte, error) {
+	bookFiles := make(map[string][]byte)
+	for _, fileHeader := range fileHeaders {
+		//for each fileheader, get a handle to the actual file
+		file, err := fileHeader.Open()
+		defer file.Close()
+
+		if err != nil {
+			return nil, err
+		}
+
+		data, err := ioutil.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		bookFiles[fileHeader.Filename] = data
+	}
+	return bookFiles, nil
 }
 
 func (webservice *EbookWebService) addBookFormHandler(w http.ResponseWriter, r *http.Request) {
