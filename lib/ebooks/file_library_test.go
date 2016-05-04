@@ -1,13 +1,13 @@
 package ebooks
 
 import (
-	"testing"
 	"encoding/json"
 	"io/ioutil"
 	"reflect"
+	"testing"
 
-	"github.com/stephenhenderson/ebooklib/lib/testutils/assert"
 	"github.com/stephenhenderson/ebooklib/lib/testutils"
+	"github.com/stephenhenderson/ebooklib/lib/testutils/assert"
 )
 
 func TestMain(m *testing.M) {
@@ -17,8 +17,8 @@ func TestMain(m *testing.M) {
 
 func TestNewBooksAreAssignedAUniqueId(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	id1, err1 := library.Add(aBook("Book1", "mr writer", 2016), emptyFileMap())
-	id2, err2 := library.Add(aBook("Book2", "mrs writer", 2015), emptyFileMap())
+	id1, err1 := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
+	id2, err2 := library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag2"}), emptyFileMap())
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
@@ -30,7 +30,7 @@ func TestNewBooksAreAssignedAUniqueId(t *testing.T) {
 func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 
 	library := newLibraryInTempFolder(t)
-	ebook, _ := library.Add(aBook("Book1", "mr writer", 2016), emptyFileMap())
+	ebook, _ := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
 
 	libraryBook, err := library.GetBookByID(ebook.ID)
 	assert.NoError(t, err, "Expected to find a book but did not")
@@ -52,8 +52,8 @@ func TestAnEmptyLibraryContainsNoBooks(t *testing.T) {
 
 func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	library.Add(aBook("Book1", "mr writer", 2016), emptyFileMap())
-	library.Add(aBook("Book2", "mrs writer", 2015), emptyFileMap())
+	library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
+	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), emptyFileMap())
 
 	books := library.GetAll()
 	if len(books) != 2 {
@@ -75,8 +75,8 @@ func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_EmptyLib(t *testing.T) {
 
 func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	library.Add(aBook("Book1", ",mr writer", 2016), emptyFileMap())
-	library.Add(aBook("Book2", "mrs writer", 2015), emptyFileMap())
+	library.Add(aBook("Book1", ",mr writer", 2016, []string{"tag1"}), emptyFileMap())
+	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), emptyFileMap())
 
 	err := library.SaveIndexToDisk()
 	assert.NoError(t, err, "Error saving index to disk")
@@ -107,7 +107,7 @@ func TestSavingABookWithAFile(t *testing.T) {
 	library := newLibraryInTempFolder(t)
 	bookFiles := make(map[string][]byte)
 	bookFiles["file1.json"] = aJsonFile()
-	book, err := library.Add(aBook("book1", "mr writer", 2016), bookFiles)
+	book, err := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), bookFiles)
 
 	assert.NoError(t, err)
 
@@ -123,7 +123,7 @@ func TestAFileCanBeDeletedFromABook(t *testing.T) {
 	bookFiles := make(map[string][]byte)
 	bookData := aJsonFile()
 	bookFiles[fileName] = bookData
-	book, _ := library.Add(aBook("book1", "mr writer", 2016), bookFiles)
+	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), bookFiles)
 
 	err := library.DeleteFileFromBook(fileName, book.ID)
 	assert.NoError(t, err)
@@ -146,7 +146,7 @@ func TestAFileCanBeDeletedFromABook(t *testing.T) {
 
 func TestReturnsAnErrorTryingToDeleteAFileWhichDoesNotExist(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	book, _ := library.Add(aBook("book1", "mr writer", 2016), make(map[string][]byte))
+	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), make(map[string][]byte))
 
 	err := library.DeleteFileFromBook("a_file_which_is_not_there", book.ID)
 	if err == nil {
@@ -174,11 +174,12 @@ func emptyFileMap() map[string][]byte {
 	return make(map[string][]byte)
 }
 
-func aBook(name string, author string, year int) *BookDetails {
+func aBook(name string, author string, year int, tags []string) *BookDetails {
 	return &BookDetails{
 		Title:   name,
 		Authors: []string{author},
 		Year:    year,
+		Tags:    tags,
 	}
 }
 

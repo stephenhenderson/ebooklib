@@ -12,8 +12,24 @@
                 <td>{{ .Title }}</td>
             </tr>
             <tr>
-                <td><label>Authors (comma-separated)</label></td>
-                <td>{{ .Authors }}</td>
+                <td><label>Authors</label></td>
+                <td>
+                    <ul>
+                    {{ range $author := .Authors }}
+                        <li>{{$author}}</li>
+                    {{ end }}    
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td><label>Tags</label></td>
+                <td>
+                    <ul>
+                        {{ range $tag := .Tags }}
+                        <span class="book_tag">{{ $tag }}</span>
+                        {{ end }}
+                    </ul>
+                </td>
             </tr>
              <tr>
                 <td><label>Year</label></td>

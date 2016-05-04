@@ -2,21 +2,21 @@ package webservice
 
 import (
 	"html/template"
-	"net/http"
-	"mime/multipart"
 	"io/ioutil"
+	"mime/multipart"
+	"net/http"
 	"path/filepath"
 
+	"fmt"
 	"github.com/stephenhenderson/ebooklib/lib/ebooks"
 	. "github.com/stephenhenderson/ebooklib/lib/logging"
-	"strings"
-	"fmt"
 	"strconv"
+	"strings"
 )
 
 const (
-	addBookTemplate = "add_book.html"
-	indexTemplate = "index.html"
+	addBookTemplate  = "add_book.html"
+	indexTemplate    = "index.html"
 	viewBookTemplate = "view_book.html"
 )
 
@@ -38,7 +38,7 @@ func loadTemplates(templateDir string) (map[string]*template.Template, error) {
 	}
 
 	templateMap := make(map[string]*template.Template)
-	for _, file := range(files) {
+	for _, file := range files {
 		fileName := file.Name()
 		if strings.HasSuffix(fileName, ".html") {
 			templatePath := filepath.Join(templateDir, fileName)
@@ -56,7 +56,7 @@ func loadTemplates(templateDir string) (map[string]*template.Template, error) {
 
 func checkAllRequiredTemplatesArePresent(templateMap map[string]*template.Template) error {
 	expectedTemplates := []string{addBookTemplate, viewBookTemplate, indexTemplate}
-	for _, template := range(expectedTemplates) {
+	for _, template := range expectedTemplates {
 		_, found := templateMap[template]
 		if !found {
 			return fmt.Errorf("missing required template %s", template)
@@ -67,7 +67,7 @@ func checkAllRequiredTemplatesArePresent(templateMap map[string]*template.Templa
 
 // EbookWebService a webservice/UI on top of an ebook library
 type EbookWebService struct {
-	library *ebooks.FileLibrary
+	library   *ebooks.FileLibrary
 	templates map[string]*template.Template
 }
 
@@ -75,8 +75,8 @@ type EbookWebService struct {
 func (webservice *EbookWebService) StartService(host string) {
 	Logger.Printf("Starting webservice on %s", host)
 	http.HandleFunc("/", webservice.listAllHandler)
-	http.HandleFunc("/" + addBookTemplate, webservice.addBookFormHandler)
-	http.HandleFunc("/" + viewBookTemplate, webservice.viewBookHandler)
+	http.HandleFunc("/"+addBookTemplate, webservice.addBookFormHandler)
+	http.HandleFunc("/"+viewBookTemplate, webservice.viewBookHandler)
 
 	http.Handle("/download_book/", http.StripPrefix("/download_book/", http.FileServer(http.Dir(webservice.library.BaseDir))))
 	http.HandleFunc("/delete_file", webservice.deleteFileHandler)
@@ -126,20 +126,25 @@ func (webservice *EbookWebService) viewBookHandler(w http.ResponseWriter, r *htt
 }
 
 func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("content type received is %v\n", r.Header.Get("Content-Type"))
 	err := r.ParseMultipartForm(100000)
 	if err != nil {
+		fmt.Printf("Got error %v and some other stuff", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	title := r.MultipartForm.Value["title"][0]
 	authors := strings.Split(r.MultipartForm.Value["authors"][0], ",")
+	tags := strings.Split(r.MultipartForm.Value["tags"][0], ",")
 	yearStr := r.MultipartForm.Value["year"][0]
 	year := 0
 	if yearStr != "" {
 		year, err = strconv.Atoi(yearStr)
 		if err != nil {
-			fmt.Fprintf(w, "Invalid year '%s', err=%v", yearStr, err)
+			errMsg := fmt.Sprintf("Invalid year '%s', err=%v", yearStr, err)
+			http.Error(w, errMsg, http.StatusBadRequest)
+			return
 		}
 	}
 
@@ -152,14 +157,16 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 	}
 
 	bookDetails := &ebooks.BookDetails{
-		Title: title,
+		Title:   title,
 		Authors: authors,
-		Year: year,
+		Year:    year,
+		Tags:    tags,
 	}
 
 	book, err := webservice.library.Add(bookDetails, bookFiles)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	viewBookUrl := fmt.Sprintf("/%s?id=%d", viewBookTemplate, book.ID)
 	http.Redirect(w, r, viewBookUrl, http.StatusFound)

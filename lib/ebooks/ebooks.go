@@ -9,6 +9,7 @@ type BookDetails struct {
 	Title   string
 	Authors []string
 	Year    int
+	Tags    []string
 }
 
 func (book *BookDetails) ToJson() []byte {
@@ -31,7 +32,5 @@ type Library interface {
 	GetBookByID(id int) (*Ebook, error)
 
 	// Gets all books in the library
-	GetAll() ([]*Ebook)
+	GetAll() []*Ebook
 }
-
-
