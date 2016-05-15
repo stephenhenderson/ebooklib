@@ -175,21 +175,24 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 func readBookFilesFromFileHeaders(fileHeaders []*multipart.FileHeader) (map[string][]byte, error) {
 	bookFiles := make(map[string][]byte)
 	for _, fileHeader := range fileHeaders {
-		//for each fileheader, get a handle to the actual file
-		file, err := fileHeader.Open()
-		defer file.Close()
-
-		if err != nil {
-			return nil, err
-		}
-
-		data, err := ioutil.ReadAll(file)
+		data, err := readBytesFromFileHeader(fileHeader)
 		if err != nil {
 			return nil, err
 		}
 		bookFiles[fileHeader.Filename] = data
 	}
 	return bookFiles, nil
+}
+
+func readBytesFromFileHeader(fileHeader *multipart.FileHeader) ([]byte, error) {
+	file, err := fileHeader.Open()
+	defer file.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ioutil.ReadAll(file)
 }
 
 func (webservice *EbookWebService) addBookFormHandler(w http.ResponseWriter, r *http.Request) {

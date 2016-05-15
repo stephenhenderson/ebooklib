@@ -2,6 +2,7 @@ package ebooks
 
 import (
 	"encoding/json"
+	"github.com/stephenhenderson/ebooklib/lib/utils"
 )
 
 // Meta information about a book
@@ -17,6 +18,24 @@ func (book *BookDetails) ToJson() []byte {
 	return bookJson
 }
 
+func (book *BookDetails) Equals(anotherBook *BookDetails) bool {
+	if book.Title != anotherBook.Title {
+		return false
+	}
+	if book.Year != anotherBook.Year {
+		return false
+	}
+	if !utils.StringSliceEquals(book.Authors, anotherBook.Authors) {
+		return false
+	}
+	if !utils.StringSliceEquals(book.Tags, anotherBook.Tags) {
+		return false
+	}
+	return true
+}
+
+// A book in a library with a unique id, details and a collection of
+// files.
 type Ebook struct {
 	ID    int
 	Files map[string]string
