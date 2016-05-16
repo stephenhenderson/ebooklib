@@ -62,7 +62,7 @@ type FileLibrary struct {
 	BaseDir string
 }
 
-func (lib *FileLibrary) Add(bookDetails *BookDetails, files map[string][]byte) (*Ebook, error) {
+func (lib *FileLibrary) Add(bookDetails *BookDetails, image []byte, files map[string][]byte) (*Ebook, error) {
 	var err error
 	lib.maxID += 1
 	ebook := &Ebook{lib.maxID, make(map[string]string), "", bookDetails}

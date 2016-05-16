@@ -10,6 +10,8 @@ import (
 	"github.com/stephenhenderson/ebooklib/lib/testutils/assert"
 )
 
+var noImage []byte = nil
+
 func TestMain(m *testing.M) {
 	defer testutils.DeleteTempDirsCreatedDuringTesting()
 	m.Run()
@@ -17,8 +19,8 @@ func TestMain(m *testing.M) {
 
 func TestNewBooksAreAssignedAUniqueId(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	id1, err1 := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
-	id2, err2 := library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag2"}), emptyFileMap())
+	id1, err1 := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), noImage, emptyFileMap())
+	id2, err2 := library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag2"}), noImage, emptyFileMap())
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
@@ -30,7 +32,7 @@ func TestNewBooksAreAssignedAUniqueId(t *testing.T) {
 func TestABookCanBeRetrievedAByIdAfterAdding(t *testing.T) {
 
 	library := newLibraryInTempFolder(t)
-	ebook, _ := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
+	ebook, _ := library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), noImage, emptyFileMap())
 
 	libraryBook, err := library.GetBookByID(ebook.ID)
 	assert.NoError(t, err, "Expected to find a book but did not")
@@ -52,8 +54,8 @@ func TestAnEmptyLibraryContainsNoBooks(t *testing.T) {
 
 func TestALibraryContainsAllBooksAddedToIt(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), emptyFileMap())
-	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), emptyFileMap())
+	library.Add(aBook("Book1", "mr writer", 2016, []string{"tag1"}), noImage, emptyFileMap())
+	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), noImage, emptyFileMap())
 
 	books := library.GetAll()
 	if len(books) != 2 {
@@ -75,8 +77,8 @@ func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_EmptyLib(t *testing.T) {
 
 func TestSaveIndexToDiskSavesAnIndexFileInTheBaseDir_NonEmptyLib(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	library.Add(aBook("Book1", ",mr writer", 2016, []string{"tag1"}), emptyFileMap())
-	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), emptyFileMap())
+	library.Add(aBook("Book1", ",mr writer", 2016, []string{"tag1"}), noImage, emptyFileMap())
+	library.Add(aBook("Book2", "mrs writer", 2015, []string{"tag1"}), noImage, emptyFileMap())
 
 	err := library.SaveIndexToDisk()
 	assert.NoError(t, err, "Error saving index to disk")
@@ -107,7 +109,7 @@ func TestSavingABookWithAFile(t *testing.T) {
 	library := newLibraryInTempFolder(t)
 	bookFiles := make(map[string][]byte)
 	bookFiles["file1.json"] = aJsonFile()
-	book, err := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), bookFiles)
+	book, err := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), noImage, bookFiles)
 
 	assert.NoError(t, err)
 
@@ -123,7 +125,7 @@ func TestAFileCanBeDeletedFromABook(t *testing.T) {
 	bookFiles := make(map[string][]byte)
 	bookData := aJsonFile()
 	bookFiles[fileName] = bookData
-	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), bookFiles)
+	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), noImage, bookFiles)
 
 	err := library.DeleteFileFromBook(fileName, book.ID)
 	assert.NoError(t, err)
@@ -146,7 +148,7 @@ func TestAFileCanBeDeletedFromABook(t *testing.T) {
 
 func TestReturnsAnErrorTryingToDeleteAFileWhichDoesNotExist(t *testing.T) {
 	library := newLibraryInTempFolder(t)
-	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), make(map[string][]byte))
+	book, _ := library.Add(aBook("book1", "mr writer", 2016, []string{"tag1"}), noImage, make(map[string][]byte))
 
 	err := library.DeleteFileFromBook("a_file_which_is_not_there", book.ID)
 	if err == nil {

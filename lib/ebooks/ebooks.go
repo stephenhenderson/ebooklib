@@ -37,9 +37,16 @@ func (book *BookDetails) Equals(anotherBook *BookDetails) bool {
 // A book in a library with a unique id, details and a collection of
 // files.
 type Ebook struct {
+	// Unique id for this book in the library
 	ID    int
+
+	// Files associated with this book (typically the ebook file(s) but
+	// could be supporting code, etc)
 	Files map[string]string
+
+	// Optional image of the book
 	Image string
+
 	*BookDetails
 }
 

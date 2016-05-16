@@ -81,6 +81,7 @@ func (webservice *EbookWebService) StartService(host string) {
 	http.Handle("/download_book/", http.StripPrefix("/download_book/", http.FileServer(http.Dir(webservice.library.BaseDir))))
 	http.HandleFunc("/delete_file", webservice.deleteFileHandler)
 	http.HandleFunc("/addBook", webservice.addBookHandler)
+	http.HandleFunc("/add_files", webservice.addFilesToBookHandler)
 
 	http.ListenAndServe(host, nil)
 }
@@ -163,12 +164,50 @@ func (webservice *EbookWebService) addBookHandler(w http.ResponseWriter, r *http
 		Tags:    tags,
 	}
 
-	book, err := webservice.library.Add(bookDetails, bookFiles)
+	var image []byte = nil // TODO
+	book, err := webservice.library.Add(bookDetails, image, bookFiles)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	viewBookUrl := fmt.Sprintf("/%s?id=%d", viewBookTemplate, book.ID)
+	http.Redirect(w, r, viewBookUrl, http.StatusFound)
+}
+
+func (webservice *EbookWebService) addFilesToBookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("content type received is %v\n", r.Header.Get("Content-Type"))
+	err := r.ParseMultipartForm(100000)
+	if err != nil {
+		fmt.Printf("Got error %v and some other stuff", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	bookID, _ := strconv.Atoi(r.MultipartForm.Value["bookID"][0])
+
+	fileHeaders := r.MultipartForm.File["files"]
+	Logger.Printf("File headers: %v", fileHeaders)
+	bookFiles, err := readBookFilesFromFileHeaders(fileHeaders)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	book, err := webservice.library.GetBookByID(bookID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for fileName, data := range bookFiles {
+		err = webservice.library.AddFileToBook(book, fileName, data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	viewBookUrl := fmt.Sprintf("/%s?id=%d", viewBookTemplate, bookID)
 	http.Redirect(w, r, viewBookUrl, http.StatusFound)
 }
 

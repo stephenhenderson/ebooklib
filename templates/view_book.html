@@ -37,13 +37,19 @@
             </tr>
             <tr>
                 <td><label>Files</label></td>
-                <td><ul>
+                <td>
+                    <ul>
                     {{ range $name, $path := .Files }}
                         <li><a href="/download_book/{{ $path }}">{{ $name }}</a>
                             [<a href="/delete_file?bookid={{ $.ID }}&filename={{ $name }}"
                                 onclick="return confirm('Delete file {{ $name }}?');">x</a>]</li>
                     {{ end }}
                     </ul>
+                    <form action="/add_files" method="post" enctype="multipart/form-data">
+                        Add/Replace file(s): <input type="file" name="files" id="files" multiple="multiple" />
+                        <br /><input type="submit" value="Add"/>
+                        <input type="hidden" value="{{ .ID }}" name="bookID" id="bookID" />
+                    </form>
                 </td>
             </tr>
         </table>
